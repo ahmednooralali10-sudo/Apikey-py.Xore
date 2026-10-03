@@ -1,35 +1,22 @@
-from fastapi import FastAPI, HTTPException, Request
 import requests
-import urllib.parse
 
-app = FastAPI()
-
-# API Key الخاص بك في zapi.ink
+# API Key الخاص بك
 ZAPI_KEY = "Zpi_8a7yqmgdtfnfspwcm81alss1nk"
 
-@app.get("/deltakey")
-async def get_delta_key(request: Request):
-    full_url = str(request.url)
-    
-    if "link=" not in full_url:
-        raise HTTPException(status_code=400, detail="الرجاء إرفاق الرابط بعد link=")
+# رابط الخدمة الخاصة بتيك توك في ZAPI (مثال لجلب بيانات فيديو)
+# يمكنك مراجعة لوحة تحكم ZAPI للوصول للمسار الدقيق (Endpoint) الخاص بتيك توك
+endpoint_url = "https://zapi.ink/api/tiktok/video"
 
-    # استخراج الرابط المرسل (سواء كان platoboost أو lootlabs)
-    target_link = full_url.split("link=", 1)[1]
+# البيانات أو الرابط المراد سحبه
+params = {
+    "api": ZAPI_KEY,
+    "url": "https://www.tiktok.com/@username/video/123456789"
+}
 
-    try:
-        # تشفير الرابط
-        encoded_link = urllib.parse.quote(target_link, safe="")
-        
-        # إرسال الطلب لـ zapi.ink
-        api_url = f"https://zapi.ink/api?api={ZAPI_KEY}&url={encoded_link}"
-        
-        response = requests.get(api_url, timeout=15)
-        data = response.json()
-        
-        return {
-            "status": "success",
-            "result": data
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"حدث خطأ أثناء فك الرابط: {str(e)}")
+response = requests.get(endpoint_url, params=params)
+
+if response.status_code == 200:
+    data = response.json()
+    print("بيانات تيك توك:", data)
+else:
+    print("حدث خطأ:", response.status_code, response.text)
