@@ -1,37 +1,35 @@
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from fastapi import FastAPI, HTTPException, Request
 import requests
-import re
+import urllib.parse
 
 app = FastAPI()
 
-ZENROWS_API_KEY = '17876db80843f219a6ae0e17c20cbf66b7097109'
+# API Key الخاص بك في zapi.ink
+ZAPI_KEY = "Zpi_8a7yqmgdtfnfspwcm81alss1nk"
 
-class LinkRequest(BaseModel):
-    url: str
-
-@app.post("/key/links")
-def get_key_from_link(data: LinkRequest):
-    params = {
-        'url': data.url,
-        'apikey': ZENROWS_API_KEY,
-        'js_render': 'true',
-        'premium_proxy': 'true',
-    }
+@app.get("/deltakey")
+async def get_delta_key(request: Request):
+    full_url = str(request.url)
     
+    if "link=" not in full_url:
+        raise HTTPException(status_code=400, detail="الرجاء إرفاق الرابط بعد link=")
+
+    # استخراج الرابط المرسل (سواء كان platoboost أو lootlabs)
+    target_link = full_url.split("link=", 1)[1]
+
     try:
-        response = requests.get('https://api.zenrows.com/v1/', params=params, timeout=25)
+        # تشفير الرابط
+        encoded_link = urllib.parse.quote(target_link, safe="")
         
-        if response.status_code != 200:
-            raise HTTPException(status_code=400, detail="فشل الاتصال بالرابط")
-
-        html_content = response.text
-        key_match = re.search(r'[a-zA-Z0-9_-]{32,64}', html_content)
+        # إرسال الطلب لـ zapi.ink
+        api_url = f"https://zapi.ink/api?api={ZAPI_KEY}&url={encoded_link}"
         
-        if key_match:
-            return {"status": "success", "key": key_match.group(0)}
-        else:
-            return {"status": "success", "raw_html": html_content}
-
+        response = requests.get(api_url, timeout=15)
+        data = response.json()
+        
+        return {
+            "status": "success",
+            "result": data
+        }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"حدث خطأ أثناء فك الرابط: {str(e)}")
